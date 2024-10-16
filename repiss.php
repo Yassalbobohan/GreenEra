@@ -1,176 +1,172 @@
 <?php
-require_once 'includes/config_session.inc.php';
+// Database connection
+$servername = "localhost";
+$username = "root";
+$password = "";
+$dbname = "greenera_database";
+
+// Create connection
+$conn = new mysqli($servername, $username, $password, $dbname);
+
+// Check connection
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
+
+// Define variables and initialize
+$message = '';
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    // Capture the user inputs
+    $user_id = $_POST['user_id'];
+    $category = $_POST['cats'];
+    $description = $_POST['description'];
+
+     // Generate the current date and time
+     $report_date = date('Y-m-d');
+    
+    // Define the target directory
+    $target_dir = __DIR__ . "/uploads/";  // Use absolute path
+
+    // Check if the directory exists, if not, create it
+    if (!is_dir($target_dir)) {
+        mkdir($target_dir, 0777, true); // Create directory with full permissions
+    }
+
+    // Handle image upload
+    $image_name = basename($_FILES["image"]["name"]);
+    $target_file = $target_dir . $image_name;
+    $imageFileType = strtolower(pathinfo($target_file, PATHINFO_EXTENSION));
+    
+    // Validate image file type
+    $valid_image = true;
+    $allowed_types = array("jpg", "jpeg", "png", "gif");
+    if (!in_array($imageFileType, $allowed_types)) {
+        $message = "Only JPG, JPEG, PNG, & GIF files are allowed.";
+        $valid_image = false;
+    }
+    
+    // If everything is valid, move the uploaded file and insert into the database
+    if ($valid_image && move_uploaded_file($_FILES["image"]["tmp_name"], $target_file)) {
+        // Prepare the SQL query
+        $sql = "INSERT INTO report (user_id, cats, description, fileName) 
+                VALUES ('$user_id', '$category', '$description', '$image_name')";  // Store the image name in the database
+        
+        if ($conn->query($sql) === TRUE) {
+            $message = "Report submitted successfully. Report ID: " . $conn->insert_id;
+        } else {
+            $message = "Error: " . $sql . "<br>" . $conn->error;
+        }
+    } else {
+        $message = "Error uploading image.";
+    }
+    
+    // Close the connection
+    $conn->close();
+}
 ?>
+
 <!DOCTYPE html>
-<html>
-    <head>
-        <meta charset="utf-8" />
-        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-        <title>Add Content</title>
-        <link rel="icon" type="image/png" href="assets/logo.png" />
-        <meta name="description" content="" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link
-        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css"
-        rel="stylesheet"
-        integrity="sha384-4bw+/aepP/YC94hEpVNVgiZdgIC5+VKNBQNGCHeKRQN+PtmoHDEXuppvnDJzQIu9"
-        crossorigin="anonymous"
-        />
-        <link
-        rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
-        />
-        <link
-        rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
-        />
-        <link rel="stylesheet" href="style.css" />
-        <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet"/>
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
-        <script>
-          document.addEventListener("DOMContentLoaded", function () {
-              document.querySelector('input[name="ulimage"]').addEventListener("change", function () {
-                  var filename = this.value.split('\\').pop(); // 获取文件名
-                  var fileSize = this.files[0].size; // 获取文件大小
-                  var maxSize = 4 * 1024 * 1024; // 4MB
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Submit Report</title>
+    <link rel="stylesheet" href="style.css">
+</head>
 
-                  if (filename.length > 250) { // 如果文件名超过250个字符
-                      alert("File name exceeds maximum length of 250 characters.");
-                      this.value = ""; // 清空文件选择框
-                  } else if (fileSize > maxSize) { // 如果文件大小超过4MB
-                      alert("File size exceeds maximum limit of 4MB.");
-                      this.value = ""; // 清空文件选择框
-                  }
-              });
-            });
-          </script>
-    </head>
+<body>
+    <!-- Sidebar and Hamburger Menu -->
+    <div class="menu-overlay" id="menuOverlay"></div>
+    <div class="sidebar" id="sidebar">
+        <button class="close-btn" id="closeBtn">&times;</button>
+        <ul>
+            <li><a href="#"><b>Schedule Waste PickUp</b></a></li>
+            <li><a href="#"><b>View Waste Pick Up</b></a></li>
+            <li><a href="#"><b>Report Issues</b></a></li>
+            <li><a href="#"><b>Manage Notifications</b></a></li>
+            <li><a href="#"><b>Report</b></a></li>
+        </ul>
+    </div>
 
-    <?php
-    include 'includes/headers/header_merchant.inc.php';
-    ?>
+    <!-- Header -->
+<header class="header">
+    <div class="header-container">
+        <!-- Hamburger Icon -->
+        <div class="hamburger" id="hamburger">
+            &#9776;
+        </div>
 
-    <body>
-    <div class="container-fluid pb-5">
-        <div class="row">
-            <nav class="col-md-2 d-md-block side-menu p-5" style="text-align:center">
-                <h5 class="text-center"><?php echo $_SESSION["user_username"] ?>'s Dashboard</h5>
-                <hr class="my-3">
-                <a href="activityques.php">Add Activity</a>
-                <a href="profile.php">Profile</a>
-                <a href="searchhistory.php">History</a>
-                <a href="friends.php">Friends</a>
-                <a href = "Recommendation.php">Recommendation</a>
-                <a href="educationalcontent.php">Education Content</a>
+        <!-- Logo in the center -->
+        <div class="logo">
+            <img src="https://i.ibb.co/vZw0zzL/Green-Era-Logo.png" alt="GreenEra Logo" />
+        </div>
 
-                    <!-- Add more links as needed -->
-            </nav>
-
-            <div class="col-md-8 pt-5">
-                    
-                    <form action="connect.php" method="POST" enctype="multipart/form-data">
-                        <h2>Add Education Content</h2>
-
-                        <div class="mb-3">
-                          <label for="" >Upload Image</label>
-                          <input type="file" class="form-control"  name="ulimage" accept="image/*,video/*" required>
-                        </div>
-
-                        <div class="mb-3">
-                          <label for="" >Title</label>
-                          <input type="text" class="form-control"  name="ultitle" placeholder="What's the title?" required maxlength="50">
-                        </div>
-
-                        <div class="mb-3">
-                          <label for="" >Description</label>
-                          <input type="text" class="form-control"  name="uldescription" placeholder="Some description?" required maxlength="500">
-                        </div>
-
-                        <div class="mb-3">
-                          <label for="ulurl" >URL</label>
-                          <input type="url" class="form-control"  name="ulurl" placeholder="Please upload the link here" >
-                        </div>
-
-                        <div class="mb-3">
-                          <label for="" >Category</label>
-                          <select name="category" class="form-control" required>
-                            <option value="" disabled selected hidden >Please select one category here</option>
-                            <option value="transportation" name="transportation">Transportation</option>
-                            <option value="energy" name="energy">Energy Usage</option>
-                            <option value="diet" name="diet">Diet</option>
-                            <option value="waste" name="waste">Waste Management</option>
-                            <option value="miscellaneous" name="miscellaneous">Miscellaneous</option>
-                            
-                          </select>
-                        </div>
-
-                        <button type="reset" class="btn btn-primary m-1">Reset</button><br>
-
-                        <button type="submit" class="btn btn-primary m-1" name="upload">Upload</button>
-                    </form>
-
-                    <!--fetch data-->
-
-                    <div class="contaioner">
-
-                      <table class="table">
-                        <thead>
-                          <tr>
-                            <th scope="col">ID</th>
-                            <th scope="col">Category</th>
-                            <th scope="col">Image</th>
-                            <th scope="col">Title</th>
-                            <th scope="col">Describtion</th>
-                            <th scope="col">URL</th>
-                            <th scope="col">delete</th>
-                            <th scope="col">Update</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                        
-                          <?php
-                            include 'config.php';
-                            $pic = mysqli_query($con,"SELECT * FROM `uploadcontent`");
-                            while($row = mysqli_fetch_array($pic)){
-                            echo "
-                              <tr>
-                                <td>$row[id]</td>
-                                <td>$row[Category]</td>
-                                <td><img src='$row[Image]' width ='100px' height ='70px'></td>
-                                <td>$row[Title]</td>
-                                <td>$row[Description]</td>
-                                <td>$row[URL]</td>
-                                <td><a href='delete.php? Id=$row[id]' class = 'btn btn-danger'>Delete</a></td>
-                                <td><a href='update.php? Id=$row[id]' class = 'btn btn-danger'>Update</a></td>
-                              </tr>
-                              ";
-                            }
-
-                          ?>
-
-                        </tbody>
-                      </table>
-                    </div>
-            </div>
-          </div>
+        <!-- User Profile on the right -->
+        <div class="user-profile">
+            <a href="#">
+                <img src="https://via.placeholder.com/40" alt="User Profile" class="profile-icon" />
+                <span class="profile-name">John Doe</span>
+            </a>
         </div>
     </div>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-    <script
-        src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-HwwvtgBNo3bZJJLYd8oVXjrBZt8cqVSpeBNS5n7C8IVInixGAoxmnlMuBnhbgrkm"
-        crossorigin="anonymous"
-    >
-    </script>
-    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
-    <script src="script.js"></script>
-    
-    <!-- JavaScript -->
-    
-  
-  </body>
+</header>
 
+<!-- Cover Section -->
+<section class="cover-section">
+    <div class="cover-content">
+        <h2>Let us know what you've experienced <br>
+            & help it's on the way</h2>
+        <p>Submit a report to let your management team know what's wrong help will be provided accordingly.</p>
+    </div>
+</section>
+<script src="script.js"></script>
 
+    <div class="container">
+        <h1>Submit your report</h1>
+
+        <!-- Display confirmation message -->
+        <?php if (!empty($message)): ?>
+            <p><?php echo $message; ?></p>
+        <?php endif; ?>
+
+        <form action="repiss.php" method="post" enctype="multipart/form-data">
+            <!-- User ID -->
+            <div>
+                <label for="user_id">User ID:</label>
+                <p><input type="number" id="user_id" name="user_id" required></p>
+            </div>
+
+            <!-- Dropdown categories -->
+<div class="custom-dropdown">
+    <label for="cats">Category:</label>
+    <div class="dropdown-selected">Select a category</div>
+    <div class="dropdown-options">
+        <div class="dropdown-option" data-value="Missed Pickup">Missed Pickup</div>
+        <div class="dropdown-option" data-value="Overflowing Bin">Overflowing Bin</div>
+        <div class="dropdown-option" data-value="Illegal Dumping">Illegal Dumping</div>
+    </div>
+    <input type="hidden" id="cats" name="cats" required>
+</div>
+
+            <!-- Description -->
+            <div>
+                <label for="description">Description:</label>
+                <p><textarea id="description" name="description" rows="4" required></textarea></p>
+            </div>
+
+            <!-- Image Upload -->
+            <div>
+                <label for="image">Upload an Image:</label>
+                <p><input type="file" id="fileName" name="image" accept="image/*" required></p>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit">Submit Report</button>
+        </form>
+    </div>
+          
+
+    
+</body>
 </html>
-
-
